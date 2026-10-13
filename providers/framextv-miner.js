@@ -66,7 +66,7 @@
     return JSON.parse(decodeURIComponent(escaped));
   }
   function minerPayload(id, type, season, episode) {
-    return fetchWithin(MOVY + '/seed?mediaId=' + encodeURIComponent(id), { headers: MOVY_HEADERS }, 12000).then(function (response) {
+    return fetchWithin(MOVY + '/seed?mediaId=' + encodeURIComponent(id), { headers: MOVY_HEADERS }, 20000).then(function (response) {
       if (!response.ok) throw new Error('Miner seed HTTP ' + response.status);
       return response.json();
     }).then(function (data) {
@@ -162,6 +162,7 @@
         title: 'FrameXTV | ' + server + (sourceTag ? ' (' + sourceTag + ')' : '') +
           ' | ' + quality + (audio ? ' | ' + audio : ''),
         quality: quality,
+        _audio: audio,
         url: url,
         headers: requestHeaders,
         subtitles: subtitles((Array.isArray(payload.subtitles) ? payload.subtitles : [])
@@ -172,7 +173,39 @@
   }
 
   function resolveUrl(value, base) {
-    try { return httpUrl(new URL(value, base).href); } catch (_) { return ''; }
+    if (typeof value !== 'string' || !value.trim()) return '';
+    value = value.trim();
+    // Resolve before invoking URL: Nuvio runtimes provide a limited URL shim.
+    if (/^\/\//.test(value)) value = 'https:' + value;
+    else if (!/^https?:\/\//i.test(value)) {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return '';
+      var parent = String(base || API + '/').split('#')[0];
+      var origin = parent.match(/^https?:\/\/[^/?#]+/i);
+      if (!origin) return '';
+      if (value.charAt(0) === '?') value = parent.split('?')[0] + value;
+      else if (value.charAt(0) === '#') value = parent + value;
+      else if (value.charAt(0) === '/') value = origin[0] + value;
+      else {
+        parent = parent.split('?')[0];
+        if (parent === origin[0]) parent += '/';
+        value = parent.replace(/\/[^/]*$/, '/') + value;
+      }
+    }
+    var parts = value.match(/^(https?:\/\/[^/?#]+)([^?#]*)([\s\S]*)$/i);
+    if (!parts) return '';
+    var path = parts[2] || '/', resolved = [];
+    path.split('/').forEach(function (segment) {
+      if (segment === '..') { if (resolved.length > 1) resolved.pop(); }
+      else if (segment !== '.') resolved.push(segment);
+    });
+    var tail = /\/(?:\.|\.\.)$/.test(path) ? '/' : '';
+    var finalPath = resolved.join('/') || '/';
+    if (tail && finalPath.charAt(finalPath.length - 1) !== '/') finalPath += tail;
+    value = parts[1] + finalPath + parts[3];
+    try {
+      var url = new URL(value);
+      return /^https?:$/.test(url.protocol) ? url.href : '';
+    } catch (_) { return ''; }
   }
 
   function attributes(line) {
@@ -199,28 +232,30 @@
     if (!/^\s*#EXTM3U/.test(text)) return null;
     var lines = text.split(/\r?\n/);
     var variants = [];
-    var externalAudio = false;
+    var audioGroups = {}, subtitleGroups = {};
     var pending = null;
     lines.forEach(function (line) {
       line = line.trim();
       if (line.indexOf('#EXT-X-MEDIA:') === 0) {
         var media = attributes(line);
-        if (media.TYPE === 'AUDIO' && media.URI) externalAudio = true;
+        if (media.TYPE === 'AUDIO' && media.URI) audioGroups[media['GROUP-ID']] = true;
+        if (media.TYPE === 'SUBTITLES' && media.URI) subtitleGroups[media['GROUP-ID']] = true;
       }
       if (line.indexOf('#EXT-X-STREAM-INF:') === 0) pending = attributes(line);
       else if (pending && line && line.charAt(0) !== '#') {
         var url = resolveUrl(line, base);
         if (url) variants.push({ url: url, quality: qualityLabel(pending),
-          bandwidth: Number(pending.BANDWIDTH || 0), audioGroup: pending.AUDIO || '' });
+          bandwidth: Number(pending.BANDWIDTH || 0), audioGroup: pending.AUDIO || '', subtitleGroup: pending.SUBTITLES || '' });
         pending = null;
       }
     });
-    return { variants: variants, externalAudio: externalAudio };
+    return { variants: variants, audioGroups: audioGroups, subtitleGroups: subtitleGroups };
   }
 
   function copyStream(stream, url, quality, extra) {
     return { name: stream.name, title: stream.title.split(' | ').slice(0, 2).join(' | ') +
-      ' | ' + quality + (extra ? ' | ' + extra : ''), quality: quality, url: url,
+      ' | ' + quality + (stream._audio ? ' | ' + stream._audio : '') + (extra ? ' | ' + extra : ''),
+      quality: quality, url: url, type: stream._type || stream.type || '',
       headers: stream.headers, subtitles: stream.subtitles };
   }
 
@@ -229,14 +264,14 @@
     var isHls = stream._type === 'hls' || /\.m3u8(?:[?#]|$)/i.test(stream.url);
     if (!isHls) return Promise.resolve([original]);
     return Promise.resolve().then(function () {
-      return fetchWithin(stream.url, { headers: stream.headers }, 8000);
+      return fetchWithin(stream.url, { headers: stream.headers }, 10000);
     }).then(function (response) {
-      if (!response.ok) throw new Error('Playlist HTTP ' + response.status);
+      if (!response.ok) { var error = new Error('Playlist HTTP ' + response.status); error.status = response.status; throw error; }
       return response.text().then(function (text) { return { text: text, base: response.url || stream.url }; });
     }).then(function (response) {
       var master = parseMaster(response.text, response.base);
       // Drop confirmed HTML error pages. Retain API URLs when a probe fails.
-      if (!master) return /^\s*(?:<!doctype html|<html)/i.test(response.text) ? [] : [original];
+      if (!master) return /^\s*(?:<!doctype|<html|[\[{])/i.test(response.text) ? [] : [original];
       if (!master.variants.length) return [original];
       var qualities = [];
       master.variants.forEach(function (variant) {
@@ -246,9 +281,8 @@
       var seen = {};
       var output = [auto];
       master.variants.sort(function (a, b) { return b.bandwidth - a.bandwidth; }).forEach(function (variant) {
-        // An external audio rendition needs the parent master. A naked video
-        // child URL would lose audio. Keep Auto with the available tiers listed.
-        if (master.externalAudio && variant.audioGroup) return;
+        // External audio/subtitle renditions need the parent master.
+        if (master.audioGroups[variant.audioGroup] || master.subtitleGroups[variant.subtitleGroup]) return;
         if (seen[variant.url]) return;
         seen[variant.url] = true;
         var quality = variant.quality || (variant.bandwidth ?
@@ -259,6 +293,7 @@
       return output;
     }).catch(function (error) {
       console.log('[FrameXTV ' + LABEL + '] Playlist: ' + error.message);
+      if (error.status === 404 || error.status === 410) return [];
       return [original];
     });
   }
@@ -266,7 +301,7 @@
   function getStreams(tmdbId, mediaType, season, episode) {
     var type = String(mediaType || '').toLowerCase();
     if (type === 'series') type = 'tv';
-    var id = String(tmdbId == null ? '' : tmdbId).replace(/^tmdb:/, '').trim();
+    var id = String(tmdbId == null ? '' : tmdbId).replace(/^tmdb[:/]/i, '').trim();
     if ((type !== 'movie' && type !== 'tv') || !/^[1-9]\d*$/.test(id)) return Promise.resolve([]);
     var url = API + '/api/stream?type=' + type + '&id=' + encodeURIComponent(id);
     if (type === 'tv') {
@@ -277,8 +312,9 @@
       url += '&season=' + encodeURIComponent(s) + '&episode=' + encodeURIComponent(e);
     }
     url += '&provider=' + encodeURIComponent(PROVIDER);
+    var lookupStart = Date.now();
     function backend() {
-      return fetchWithin(url, { headers: { Accept: 'application/json' } }, 12000).then(function (response) {
+      return fetchWithin(url, { headers: { Accept: 'application/json' } }, Math.min(18000, Math.max(1000, 45000 - (Date.now() - lookupStart)))).then(function (response) {
         if (!response.ok) throw new Error('API HTTP ' + response.status);
         return response.json();
       });
