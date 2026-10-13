@@ -1,6 +1,6 @@
 {
   "name": "FrameXTV for Nuvio",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Individual FrameXTV sources with available stream quality options and subtitles.",
   "author": "Community",
   "scrapers": [
@@ -23,7 +23,7 @@
     {
       "id": "framextv-miner",
       "name": "FrameXTV | Miner",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Individual Miner sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-miner.js",
       "supportedTypes": [
