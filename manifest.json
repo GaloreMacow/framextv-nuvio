@@ -1,0 +1,18 @@
+{
+  "name": "FrameXTV for Nuvio",
+  "version": "1.0.0",
+  "description": "Unofficial FrameXTV movie and TV stream provider.",
+  "author": "Community",
+  "scrapers": [
+    {
+      "id": "framextv",
+      "name": "FrameXTV",
+      "version": "1.0.0",
+      "description": "FrameXTV API with automatic provider selection and subtitles.",
+      "filename": "providers/framextv.js",
+      "supportedTypes": ["movie", "tv"],
+      "enabled": true,
+      "formats": ["hls", "mp4"]
+    }
+  ]
+}
