@@ -2,6 +2,8 @@
 (function () {
   'use strict';
   var API = 'https://api.framextv.tech';
+  var PROVIDER = "super_barbarian";
+  var LABEL = "Super Barbarian";
 
   function httpUrl(value) {
     if (typeof value !== 'string') return '';
@@ -48,6 +50,9 @@
       var server = source.server || payload.provider || 'Auto';
       var quality = typeof source.quality === 'string' && source.quality.trim()
         ? source.quality : 'Auto';
+      // Some API fields are server tags (dcloud/tcloud), not resolutions.
+      var sourceTag = /(?:\d+p|\b4k\b|\bauto\b)/i.test(quality) ? '' : quality;
+      if (sourceTag) quality = 'Unknown';
       var audio = (Array.isArray(source.audioTracks) ? source.audioTracks : []).map(function (track) {
         return track && (track.label || track.language);
       }).filter(Boolean).join(', ');
@@ -55,14 +60,109 @@
       var sourceHeaders = headers(source.headers);
       Object.keys(sourceHeaders).forEach(function (key) { requestHeaders[key] = sourceHeaders[key]; });
       return {
-        name: 'FrameXTV',
-        title: 'FrameXTV | ' + server + ' | ' + quality + (audio ? ' | ' + audio : ''),
+        name: 'FrameXTV | ' + LABEL,
+        title: 'FrameXTV | ' + server + (sourceTag ? ' (' + sourceTag + ')' : '') +
+          ' | ' + quality + (audio ? ' | ' + audio : ''),
         quality: quality,
         url: url,
         headers: requestHeaders,
-        subtitles: subtitles((payload.subtitles || []).concat(source.subtitles || []))
+        subtitles: subtitles((Array.isArray(payload.subtitles) ? payload.subtitles : [])
+          .concat(Array.isArray(source.subtitles) ? source.subtitles : [])),
+        _type: source.type
       };
     }).filter(function (item) { return item !== null; });
+  }
+
+  function resolveUrl(value, base) {
+    try { return httpUrl(new URL(value, base).href); } catch (_) { return ''; }
+  }
+
+  function attributes(line) {
+    var result = {};
+    var regex = /([A-Z0-9-]+)=("[^"]*"|[^,]*)/g;
+    var match;
+    while ((match = regex.exec(line))) result[match[1]] = match[2].replace(/^"|"$/g, '');
+    return result;
+  }
+
+  function qualityLabel(attrs) {
+    var resolution = String(attrs.RESOLUTION || '').match(/^(\d+)x(\d+)$/);
+    if (!resolution) return '';
+    var width = Number(resolution[1]);
+    var height = Number(resolution[2]);
+    // Cinematic streams are cropped: 1920x800 is still the 1080p tier.
+    var tier = width >= 3840 ? 2160 : width >= 2560 ? 1440 : width >= 1920 ? 1080
+      : width >= 1280 ? 720 : width >= 854 ? 480 : width >= 640 ? 360 : height;
+    return (tier === 2160 ? '4K' : tier + 'p') +
+      (attrs['VIDEO-RANGE'] && attrs['VIDEO-RANGE'] !== 'SDR' ? ' ' + attrs['VIDEO-RANGE'] : '');
+  }
+
+  function parseMaster(text, base) {
+    if (!/^\s*#EXTM3U/.test(text)) return null;
+    var lines = text.split(/\r?\n/);
+    var variants = [];
+    var externalAudio = false;
+    var pending = null;
+    lines.forEach(function (line) {
+      line = line.trim();
+      if (line.indexOf('#EXT-X-MEDIA:') === 0) {
+        var media = attributes(line);
+        if (media.TYPE === 'AUDIO' && media.URI) externalAudio = true;
+      }
+      if (line.indexOf('#EXT-X-STREAM-INF:') === 0) pending = attributes(line);
+      else if (pending && line && line.charAt(0) !== '#') {
+        var url = resolveUrl(line, base);
+        if (url) variants.push({ url: url, quality: qualityLabel(pending),
+          bandwidth: Number(pending.BANDWIDTH || 0), audioGroup: pending.AUDIO || '' });
+        pending = null;
+      }
+    });
+    return { variants: variants, externalAudio: externalAudio };
+  }
+
+  function copyStream(stream, url, quality, extra) {
+    return { name: stream.name, title: stream.title.split(' | ').slice(0, 2).join(' | ') +
+      ' | ' + quality + (extra ? ' | ' + extra : ''), quality: quality, url: url,
+      headers: stream.headers, subtitles: stream.subtitles };
+  }
+
+  function expandQualities(stream) {
+    var original = copyStream(stream, stream.url, stream.quality, 'API source');
+    var isHls = stream._type === 'hls' || /\.m3u8(?:[?#]|$)/i.test(stream.url);
+    if (!isHls) return Promise.resolve([original]);
+    return Promise.resolve().then(function () {
+      return fetch(stream.url, { headers: stream.headers });
+    }).then(function (response) {
+      if (!response.ok) throw new Error('Playlist HTTP ' + response.status);
+      return response.text().then(function (text) { return { text: text, base: response.url || stream.url }; });
+    }).then(function (response) {
+      var master = parseMaster(response.text, response.base);
+      // Drop confirmed HTML error pages. Retain API URLs when a probe fails.
+      if (!master) return /^\s*(?:<!doctype html|<html)/i.test(response.text) ? [] : [original];
+      if (!master.variants.length) return [original];
+      var qualities = [];
+      master.variants.forEach(function (variant) {
+        if (variant.quality && qualities.indexOf(variant.quality) < 0) qualities.push(variant.quality);
+      });
+      var auto = copyStream(stream, stream.url, 'Auto', qualities.length ? qualities.join(' / ') : 'Adaptive');
+      var seen = {};
+      var output = [auto];
+      master.variants.sort(function (a, b) { return b.bandwidth - a.bandwidth; }).forEach(function (variant) {
+        // An external audio rendition needs the parent master. A naked video
+        // child URL would lose audio. Keep Auto with the available tiers listed.
+        if (master.externalAudio && variant.audioGroup) return;
+        if (seen[variant.url]) return;
+        seen[variant.url] = true;
+        var quality = variant.quality || (variant.bandwidth ?
+          (variant.bandwidth / 1000000).toFixed(1) + ' Mbps' : 'Unknown');
+        output.push(copyStream(stream, variant.url, quality,
+          variant.bandwidth ? (variant.bandwidth / 1000000).toFixed(1) + ' Mbps' : ''));
+      });
+      return output;
+    }).catch(function (error) {
+      console.log('[FrameXTV ' + LABEL + '] Playlist: ' + error.message);
+      return [original];
+    });
   }
 
   function getStreams(tmdbId, mediaType, season, episode) {
@@ -78,18 +178,28 @@
       if (!/^\d+$/.test(s) || !/^[1-9]\d*$/.test(e)) return Promise.resolve([]);
       url += '&season=' + encodeURIComponent(s) + '&episode=' + encodeURIComponent(e);
     }
-    // Omit provider to use the backend's automatic provider selection.
+    url += '&provider=' + encodeURIComponent(PROVIDER);
     return Promise.resolve().then(function () {
       return fetch(url, { headers: { Accept: 'application/json' } });
     }).then(function (response) {
       if (!response.ok) throw new Error('API HTTP ' + response.status);
       return response.json();
-    }).then(normalize).catch(function (error) {
+    }).then(normalize).then(function (streams) {
+      // Each FrameXTV provider is a separate Nuvio scraper, so one failed API
+      // provider cannot discard the results from the other scrapers.
+      return Promise.all(streams.map(expandQualities)).then(function (groups) {
+        var result = [];
+        var seen = {};
+        groups.forEach(function (group) { group.forEach(function (stream) {
+          if (!seen[stream.url]) { seen[stream.url] = true; result.push(stream); }
+        }); });
+        return result;
+      });
+    }).catch(function (error) {
       console.log('[FrameXTV] ' + (error && error.message ? error.message : 'Request failed'));
       return [];
     });
   }
 
   module.exports = { getStreams: getStreams };
-  
 }());
