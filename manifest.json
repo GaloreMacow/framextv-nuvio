@@ -1,18 +1,120 @@
 {
   "name": "FrameXTV for Nuvio",
-  "version": "1.0.0",
-  "description": "Unofficial FrameXTV movie and TV stream provider.",
+  "version": "1.1.0",
+  "description": "Individual FrameXTV sources with available stream quality options and subtitles.",
   "author": "Community",
   "scrapers": [
     {
       "id": "framextv",
-      "name": "FrameXTV",
-      "version": "1.0.0",
-      "description": "FrameXTV API with automatic provider selection and subtitles.",
+      "name": "FrameXTV | Super Barbarian",
+      "version": "1.1.0",
+      "description": "Individual Super Barbarian sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv.js",
-      "supportedTypes": ["movie", "tv"],
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
       "enabled": true,
-      "formats": ["hls", "mp4"]
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-miner",
+      "name": "FrameXTV | Miner",
+      "version": "1.1.0",
+      "description": "Individual Miner sources, adaptive HLS and available quality variants.",
+      "filename": "providers/framextv-miner.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-headhunter",
+      "name": "FrameXTV | Headhunter",
+      "version": "1.1.0",
+      "description": "Individual Headhunter sources, adaptive HLS and available quality variants.",
+      "filename": "providers/framextv-headhunter.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-valkyrie",
+      "name": "FrameXTV | Valkyrie",
+      "version": "1.1.0",
+      "description": "Individual Valkyrie sources, adaptive HLS and available quality variants.",
+      "filename": "providers/framextv-valkyrie.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-hog-rider",
+      "name": "FrameXTV | Hog Rider",
+      "version": "1.1.0",
+      "description": "Individual Hog Rider sources, adaptive HLS and available quality variants.",
+      "filename": "providers/framextv-hog-rider.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-lava-hound",
+      "name": "FrameXTV | Lava Hound",
+      "version": "1.1.0",
+      "description": "Individual Lava Hound sources, adaptive HLS and available quality variants.",
+      "filename": "providers/framextv-lava-hound.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-bowler",
+      "name": "FrameXTV | Bowler",
+      "version": "1.1.0",
+      "description": "Individual Bowler sources, adaptive HLS and available quality variants.",
+      "filename": "providers/framextv-bowler.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
     }
   ]
 }
