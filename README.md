@@ -19,7 +19,7 @@ An unofficial plugin that brings FrameXTV movie and TV episode streams to Nuvio.
    https://raw.githubusercontent.com/GaloreMacow/framextv-nuvio/main/manifest.json
    ```
 
-3. Enable the FrameXTV providers you want to use.
+3. Enable the providers you want to use, such as **Super Barbarian**, **Miner**, or **Bowler**.
 4. Open a movie or TV episode and select a FrameXTV stream.
 
 After updates, refresh the repository and reload the title’s sources. Stream availability, quality, and subtitles depend on FrameXTV and its providers.

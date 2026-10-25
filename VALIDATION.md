@@ -1,8 +1,10 @@
-# FrameXTV review — v1.1.3
+# FrameXTV review — v1.1.4
 
 Reviewed on **25 October 2026**. All seven provider IDs, settings switches, and API provider selections are retained. These checks describe this version and point-in-time upstream availability.
 
 ## Changes
+
+- v1.1.4 removes the redundant `FrameXTV |` prefix from all seven provider display names. Provider IDs and API selections remain unchanged. The processing improvements below were introduced in v1.1.3.
 
 - Removed the redundant `FrameXTV |` prefix from result names and titles, plus the uninformative `API source` suffix. Source/server names, source tags, quality, bitrate, and audio labels remain available. Subtitle labels fall back to their language or `Subtitles`.
 - Normalize common payload subtitles once instead of repeating that work for every source. Source-specific captions and subtitle request headers are retained.
