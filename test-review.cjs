@@ -16,7 +16,7 @@ const audio='#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="audio.m3u8"\
  const caption=await load(()=>Promise.resolve(response(externalSubs))).expandQualities(s);
  check(prefix+'external subtitle groups keep playable Auto master',()=>{assert.equal(caption.length,1);assert.equal(caption[0].quality,'Auto');assert.equal(caption[0].type,'hls');assert.equal(caption[0].subtitles[0].headers.Referer,'https://source.example/');});
  const sound=await load(()=>Promise.resolve(response(audio))).expandQualities(s);
- check(prefix+'external audio is preserved',()=>{assert.equal(sound.length,1);assert(sound[0].title.includes('English'));assert(sound[0].url.includes('master.json'));});
+ check(prefix+'external audio is preserved',()=>{assert.equal(sound.length,1);assert.equal(sound[0]._audio,'English');assert(sound[0].url.includes('master.json'));});
  const json=await load(()=>Promise.resolve(response('{"error":"expired"}'))).expandQualities(s);
  check(prefix+'JSON errors are not treated as media',()=>assert.equal(json.length,0));
  const html=await load(()=>Promise.resolve(response('<!DOCTYPE html><html>Error</html>'))).expandQualities(s);
@@ -25,9 +25,9 @@ const audio='#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="audio.m3u8"\
  const region=await load(()=>Promise.resolve(response('',403))).expandQualities(s);
  check(prefix+'region-dependent probe failures retain API source',()=>assert.equal(region.length,1));
  let calls=[];const full=load(u=>{calls.push(u);if(u.includes('api.wecollege.net'))return Promise.resolve(response({},503));return Promise.resolve(response({success:true,sources:[{url:'https://cdn.example/video.mp4',quality:'1080p',type:'mp4'}]}));});
- const movie=await full.getStreams('TMDB/969681','movie');check(prefix+'Spider-Man movie ID reaches the correct provider',()=>{assert(movie.length===1);assert(calls.some(u=>u.includes('id=969681')&&u.includes('provider=')));});
+ const movie=await full.getStreams('TMDB/969681','movie');check(prefix+'Spider-Man movie ID reaches the correct provider',()=>{assert(movie.length===1);const expected=scraper.id==='framextv'?'super_barbarian':scraper.id==='framextv-lava-hound'?'lavahound':scraper.id.replace('framextv-','').replaceAll('-','_');assert(calls.some(u=>{const q=new URL(u).searchParams;return q.get('id')==='969681'&&q.get('provider')===expected;}));});
  const bad=await full.getStreams('969681','tv',1,0);check(prefix+'invalid episodes cannot substitute episode one',()=>assert.equal(bad.length,0));
  const timer=load(()=>new Promise(()=>{}),{setTimeout:(fn)=>setTimeout(fn,2),clearTimeout});await assert.rejects(timer.fetchWithin('https://fixture.invalid/',{},10),/timeout/);check(prefix+'optional request deadlines prevent indefinite waits',()=>{});
  }
- console.log('\n'+checks+' checks passed across seven providers.');
+ console.log('\n'+checks+' checks passed across '+manifest.scrapers.length+' providers.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

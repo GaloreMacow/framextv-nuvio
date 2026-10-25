@@ -11,12 +11,16 @@ const playlist='#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=4000000,RESOLUTION=1920x800
  check('wrong seed cannot yield a source',()=>assert.throws(()=>p.decodeSources(fixture.encoded,'wrong',fixture.id)));
  check('wrong movie ID cannot yield a source',()=>assert.throws(()=>p.decodeSources(fixture.encoded,fixture.seed,550)));
  check('invalid encoding fails cleanly',()=>assert.throws(()=>p.decodeSources('!!',fixture.seed,fixture.id)));
- let urls=[];function net(url,options){urls.push(url);if(url.includes('/seed?'))return Promise.resolve(response({seed:fixture.seed}));if(url.includes('/sources?')){assert.equal(options.headers.Origin,'https://www.movy.bz');return Promise.resolve(response(url.includes('/atlanta/')?fixture.encoded:'broken'));}if(url.includes('cdn.example/master'))return Promise.resolve(response(playlist));throw Error('Unexpected '+url);}
+ let urls=[];function net(url,options){urls.push(url);if(url.includes('/seed?'))return Promise.resolve(response({seed:fixture.seed}));if(url.includes('/sources?')){assert.equal(options.headers.Origin,'https://www.movy.sx');return Promise.resolve(response(url.includes('/atlanta/')?fixture.encoded:'broken'));}if(url.includes('cdn.example/master'))return Promise.resolve(response(playlist));throw Error('Unexpected '+url);}
  const full=load(net),result=await full.getStreams('tmdb:937020','movie');
  check('Miner uses the public client source lookup',()=>{assert(urls.some(u=>u.includes('/atlanta/sources?')&&u.includes('tmdbId=937020')));assert(!urls.some(u=>u.includes('api.framextv.tech')));assert(result.length===3);});
- check('one failed city does not discard successful city results',()=>assert(result.every(s=>s.title.includes('Atlanta'))));
+ check('one failed city does not discard successful city results',()=>assert.equal(result.length,3));
  check('HLS Auto and cropped quality tiers are preserved',()=>assert.deepEqual(Array.from(result,s=>s.quality),['Auto','1080p','720p']));
- check('relative playlists and source headers are preserved',()=>{assert.equal(result[1].url,'https://cdn.example/high.m3u8');assert.equal(result[1].headers.Referer,'https://www.movy.bz/');assert.equal(result[1].headers['X-Source'],'fixture');assert.equal(result[1].subtitles[0].language,'en');});
+ check('relative playlists and source headers are preserved',()=>{assert.equal(result[1].url,'https://cdn.example/high.m3u8');assert.equal(result[1].headers.Referer,'https://www.movy.sx/');assert.equal(result[1].headers['X-Source'],'fixture');assert.equal(result[1].subtitles[0].language,'en');});
+ const cityCalls=[];const secondary=load(u=>{cityCalls.push(u);if(u.includes('/seed?'))return Promise.resolve(response({seed:fixture.seed}));if(u.includes('/sources?'))return Promise.resolve(response(u.includes('/seattle/')?fixture.encoded:'broken'));return Promise.resolve(response(playlist));});
+ const secondaryResult=await secondary.getStreams('937020','movie');
+ check('current secondary cities are tried after empty primary cities',()=>{assert.equal(secondaryResult.length,3);for(const city of ['miami','boise','atlanta','seattle','phoenix','oakland','vegas','portland','dallas'])assert(cityCalls.some(u=>u.includes('/'+city+'/sources?')));assert(!cityCalls.some(u=>u.includes('api.framextv.tech')));});
+ check('successful primary cities avoid unnecessary secondary requests',()=>assert(!urls.some(u=>/\/(?:seattle|phoenix|oakland|vegas|portland|dallas)\/sources/.test(u))));
  const fallback=load(u=>u.includes('api.wecollege.net')?Promise.resolve(response('',429)):Promise.resolve(response({success:true,sources:[{url:'https://cdn.example/movie.mp4',quality:'1080p',type:'mp4'}]})));
  const old=await fallback.getStreams('937020','movie');check('client failure still falls back to the existing FrameXTV API',()=>assert.equal(old.length,1));
  let clock=0, pendingSeed, events=[], lateUrls=[];

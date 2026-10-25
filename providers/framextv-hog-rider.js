@@ -79,6 +79,12 @@
       group.push({ source: stream, key: key }); return true;
     });
   }
+  function resolutionLabel(value) {
+    var text = String(value || ''), matches = text.match(/\b(?:4k|[1-9]\d{2,3}p)\b/gi);
+    if (/\bauto\b/i.test(text) || (matches && matches.length > 1)) return 'Auto';
+    if (matches) return /^4k$/i.test(matches[0]) ? '4K' : matches[0].toLowerCase();
+    return !text ? 'Auto' : 'Unknown';
+  }
   function normalize(payload) {
     if (!payload || payload.success === false || !Array.isArray(payload.sources)) return [];
     var sharedHeaders = headers(payload.headers), sharedSubtitles = subtitles(payload.subtitles);
@@ -87,22 +93,17 @@
       var url = httpUrl(source.url), type = String(source.type || '').toLowerCase();
       // Web players cannot be played as media streams by Nuvio.
       if (!url || type === 'iframe' || type === 'embed') return null;
-      var server = source.server || payload.provider || LABEL;
       var quality = typeof source.quality === 'string' && source.quality.trim()
         ? source.quality.trim() : 'Auto';
-      var sourceTag = /(?:\d+p|\b4k\b|\bauto\b)/i.test(quality) ? '' : quality;
-      if (sourceTag) quality = 'Unknown';
-      if (/^auto$/i.test(quality)) quality = 'Auto';
+      quality = resolutionLabel(quality);
       var audio = (Array.isArray(source.audioTracks) ? source.audioTracks : []).map(function (track) {
         return track && (track.label || track.language);
       }).filter(Boolean).join(', ');
       var requestHeaders = headers(sharedHeaders), sourceHeaders = headers(source.headers);
       Object.keys(sourceHeaders).forEach(function (key) { requestHeaders[key] = sourceHeaders[key]; });
-      server += sourceTag ? ' (' + sourceTag + ')' : '';
       return {
-        name: LABEL,
-        title: server + ' | ' + quality + (audio ? ' | ' + audio : ''),
-        quality: quality, _server: server, _audio: audio, url: url,
+        name: quality, title: quality,
+        quality: quality, _audio: audio, url: url,
         headers: requestHeaders,
         subtitles: Array.isArray(source.subtitles) && source.subtitles.length
           ? subtitles(sharedSubtitles.concat(source.subtitles)) : sharedSubtitles,
@@ -163,8 +164,7 @@
     // Cinematic streams are cropped: 1920x800 is still the 1080p tier.
     var tier = width >= 3840 ? 2160 : width >= 2560 ? 1440 : width >= 1920 ? 1080
       : width >= 1280 ? 720 : width >= 854 ? 480 : width >= 640 ? 360 : height;
-    return (tier === 2160 ? '4K' : tier + 'p') +
-      (attrs['VIDEO-RANGE'] && attrs['VIDEO-RANGE'] !== 'SDR' ? ' ' + attrs['VIDEO-RANGE'] : '');
+    return tier === 2160 ? '4K' : tier + 'p';
   }
 
   function parseMaster(text, base) {
@@ -193,15 +193,15 @@
     return { variants: variants, audioGroups: audioGroups, subtitleGroups: subtitleGroups };
   }
 
-  function copyStream(stream, url, quality, extra) {
-    return { name: stream.name, title: (stream._server || stream.title.split(' | ')[0]) +
-      ' | ' + quality + (stream._audio ? ' | ' + stream._audio : '') + (extra ? ' | ' + extra : ''),
-      quality: quality, url: url, _audio: stream._audio || '', type: stream._type || stream.type || '',
+  function copyStream(stream, url, quality) {
+    quality = resolutionLabel(quality);
+    return { name: quality, title: quality, quality: quality, url: url,
+      _audio: stream._audio || '', type: stream._type || stream.type || '',
       headers: stream.headers, subtitles: stream.subtitles };
   }
 
   function expandQualities(stream, ctx) {
-    var original = copyStream(stream, stream.url, stream.quality, '');
+    var original = copyStream(stream, stream.url, stream.quality);
     var isHls = stream._type === 'hls' || /\.m3u8(?:[?#]|$)/i.test(stream.url);
     if (!isHls) return Promise.resolve([original]);
     var cache = ctx ? (ctx.playlists || (ctx.playlists = Object.create(null))) : Object.create(null);
@@ -217,11 +217,7 @@
       // Drop confirmed HTML error pages. Retain API URLs when a probe fails.
       if (!master) return /^\s*(?:<!doctype|<html|[\[{])/i.test(response.text) ? [] : [original];
       if (!master.variants.length) return [original];
-      var qualities = [];
-      master.variants.forEach(function (variant) {
-        if (variant.quality && qualities.indexOf(variant.quality) < 0) qualities.push(variant.quality);
-      });
-      var auto = copyStream(stream, stream.url, 'Auto', qualities.length ? qualities.join(' / ') : 'Adaptive');
+      var auto = copyStream(stream, stream.url, 'Auto');
       var seen = {};
       var output = [auto];
       master.variants.forEach(function (variant) {
@@ -229,10 +225,7 @@
         if (master.audioGroups[variant.audioGroup] || master.subtitleGroups[variant.subtitleGroup]) return;
         if (seen[variant.url]) return;
         seen[variant.url] = true;
-        var quality = variant.quality || (variant.bandwidth ?
-          (variant.bandwidth / 1000000).toFixed(1) + ' Mbps' : 'Unknown');
-        output.push(copyStream(stream, variant.url, quality,
-          variant.bandwidth ? (variant.bandwidth / 1000000).toFixed(1) + ' Mbps' : ''));
+        output.push(copyStream(stream, variant.url, variant.quality || 'Unknown'));
       });
       return output;
     }).catch(function (error) {

@@ -4,10 +4,10 @@ An unofficial plugin that brings FrameXTV movie and TV episode streams to Nuvio.
 
 ## Features
 
-- Seven providers: Super Barbarian, Miner, Headhunter, Valkyrie, Hog Rider, Lava Hound, and Bowler.
+- Individual provider switches, including Miner, Bowler, Executioner, Root Rider, Giant, Titan, Royal Champion, Skeleton King, and Archer Queen.
 - Available quality options, including adaptive Auto streams.
-- Audio labels and subtitles when supplied by the source.
-- Clean stream labels showing the source and quality.
+- Resolution-only stream labels, such as Auto, 4K, 1080p, and 720p.
+- Available audio tracks and subtitles when supplied by the source.
 - Choose which providers to enable in Nuvio.
 
 ## Installation
@@ -22,7 +22,7 @@ An unofficial plugin that brings FrameXTV movie and TV episode streams to Nuvio.
 3. Enable the providers you want to use, such as **Super Barbarian**, **Miner**, or **Bowler**.
 4. Open a movie or TV episode and select a FrameXTV stream.
 
-After updates, refresh the repository and reload the title’s sources. Stream availability, quality, and subtitles depend on FrameXTV and its providers.
+After updates, refresh the repository, enable your preferred providers (including any new ones), and reload the title’s sources. Stream availability, quality, and subtitles depend on FrameXTV and its providers. Some older providers are disabled upstream; their existing settings are retained.
 
 ## Development
 

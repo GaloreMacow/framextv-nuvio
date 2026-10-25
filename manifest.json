@@ -1,13 +1,13 @@
 {
   "name": "FrameXTV for Nuvio",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Individual FrameXTV sources with available stream quality options and subtitles.",
   "author": "Community",
   "scrapers": [
     {
       "id": "framextv",
       "name": "Super Barbarian",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Super Barbarian sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv.js",
       "supportedTypes": [
@@ -23,7 +23,7 @@
     {
       "id": "framextv-miner",
       "name": "Miner",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Miner sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-miner.js",
       "supportedTypes": [
@@ -39,7 +39,7 @@
     {
       "id": "framextv-headhunter",
       "name": "Headhunter",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Headhunter sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-headhunter.js",
       "supportedTypes": [
@@ -55,7 +55,7 @@
     {
       "id": "framextv-valkyrie",
       "name": "Valkyrie",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Valkyrie sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-valkyrie.js",
       "supportedTypes": [
@@ -71,7 +71,7 @@
     {
       "id": "framextv-hog-rider",
       "name": "Hog Rider",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Hog Rider sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-hog-rider.js",
       "supportedTypes": [
@@ -87,7 +87,7 @@
     {
       "id": "framextv-lava-hound",
       "name": "Lava Hound",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Lava Hound sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-lava-hound.js",
       "supportedTypes": [
@@ -103,9 +103,121 @@
     {
       "id": "framextv-bowler",
       "name": "Bowler",
-      "version": "1.1.4",
+      "version": "1.2.0",
       "description": "Individual Bowler sources, adaptive HLS and available quality variants.",
       "filename": "providers/framextv-bowler.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-royal-champion",
+      "name": "Royal Champion",
+      "version": "1.2.0",
+      "description": "Individual Royal Champion streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-royal-champion.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-skeleton-king",
+      "name": "Skeleton King",
+      "version": "1.2.0",
+      "description": "Individual Skeleton King streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-skeleton-king.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-titan",
+      "name": "Titan",
+      "version": "1.2.0",
+      "description": "Individual Titan streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-titan.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-giant",
+      "name": "Giant",
+      "version": "1.2.0",
+      "description": "Individual Giant streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-giant.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-executioner",
+      "name": "Executioner",
+      "version": "1.2.0",
+      "description": "Individual Executioner streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-executioner.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-root-rider",
+      "name": "Root Rider",
+      "version": "1.2.0",
+      "description": "Individual Root Rider streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-root-rider.js",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "enabled": true,
+      "formats": [
+        "hls",
+        "mp4"
+      ]
+    },
+    {
+      "id": "framextv-archer-queen",
+      "name": "Archer Queen",
+      "version": "1.2.0",
+      "description": "Individual Archer Queen streams with available resolutions and subtitles.",
+      "filename": "providers/framextv-archer-queen.js",
       "supportedTypes": [
         "movie",
         "tv"

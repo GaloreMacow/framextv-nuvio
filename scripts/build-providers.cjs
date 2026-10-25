@@ -10,7 +10,14 @@ const entries = [
   ['framextv-valkyrie', 'valkyrie', 'Valkyrie'],
   ['framextv-hog-rider', 'hog_rider', 'Hog Rider'],
   ['framextv-lava-hound', 'lavahound', 'Lava Hound'],
-  ['framextv-bowler', 'bowler', 'Bowler']
+  ['framextv-bowler', 'bowler', 'Bowler'],
+  ['framextv-royal-champion', 'royal_champion', 'Royal Champion'],
+  ['framextv-skeleton-king', 'skeleton_king', 'Skeleton King'],
+  ['framextv-titan', 'titan', 'Titan'],
+  ['framextv-giant', 'giant', 'Giant'],
+  ['framextv-executioner', 'executioner', 'Executioner'],
+  ['framextv-root-rider', 'root_rider', 'Root Rider'],
+  ['framextv-archer-queen', 'archer_queen', 'Archer Queen']
 ];
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
 if (manifest.scrapers.length !== entries.length) throw Error('Provider catalog differs from manifest');
@@ -28,4 +35,4 @@ for (const [id, api, label] of entries) {
     if (fs.readFileSync(file, 'utf8') !== code) throw Error('Run npm run build: ' + entry.filename);
   } else fs.writeFileSync(file, code);
 }
-console.log('All seven standalone providers are consistent.');
+console.log(`All ${entries.length} standalone providers are consistent.`);

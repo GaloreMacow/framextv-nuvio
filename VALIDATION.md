@@ -1,45 +1,65 @@
-# FrameXTV review — v1.1.4
+# FrameXTV review — v1.2.0
 
-Reviewed on **25 October 2026**. All seven provider IDs, settings switches, and API provider selections are retained. These checks describe this version and point-in-time upstream availability.
+Reviewed on **25 October 2026**. The plugin now exposes 14 independent providers. Existing provider IDs and settings are retained.
 
 ## Changes
 
-- v1.1.4 removes the redundant `FrameXTV |` prefix from all seven provider display names. Provider IDs and API selections remain unchanged. The processing improvements below were introduced in v1.1.3.
+- Result `name`, `title`, and `quality` now contain only a resolution, `Auto`, or `Unknown`. Source names, audio language labels, bitrate annotations, and redundant descriptive text are removed from the result labels. Embedded audio tracks and attached captions remain available to the player. Adaptive API ranges such as `4K / 1080p` are shown as `Auto` until a fixed variant is identified.
+- Fixed Miner's stale Origin/Referer: the website now uses `https://www.movy.sx/` instead of `.bz`. A paired seed test returned HTTP 403 with the old origin and HTTP 200 with the current one. The updated client returned sources for all four test titles.
+- Updated Miner's city list to match the retrieved public website client: Miami, Boise, and Atlanta first; Seattle, Phoenix, Oakland, Vegas, Portland, and Dallas only if the primary group returns no usable sources. Requests respect the lookup budget and retain the existing API fallback.
+- Added seven missing API providers: Royal Champion, Skeleton King, Titan, Giant, Executioner, Root Rider, and Archer Queen. Every addition returned results for at least one title in the matrix below.
+- Preserved per-lookup playlist reuse, shared-caption normalization, full-response deadlines, alternate playback headers/captions/audio versions, and external HLS audio/subtitle groups. No persistent signed-URL cache or runtime imports were added.
 
-- Removed the redundant `FrameXTV |` prefix from result names and titles, plus the uninformative `API source` suffix. Source/server names, source tags, quality, bitrate, and audio labels remain available. Subtitle labels fall back to their language or `Subtitles`.
-- Normalize common payload subtitles once instead of repeating that work for every source. Source-specific captions and subtitle request headers are retained.
-- Reuse the fetch and parse of an identical HLS playlist within one lookup. Cache keys include playback headers; different referrers or authorization remain separate. Each new lookup starts fresh.
-- Skip splitting and scanning segment lines when a playlist has no master variants. Sort parsed master variants once, rather than again for every source using that master.
-- Serialize duplicate playback metadata only when a URL repeats. Deduplication now preserves versions with different headers, captions, audio labels, quality, or transport type instead of discarding everything after the first URL match.
-- Extend optional request deadlines through response body reads, including API JSON, Miner seed/city responses, and HLS text. Runtimes without timers continue to depend on the application's timeout; network cancellation is not required.
-- Keep Miner's public client decoder, three independent city lookups, and API fallback. An invalid decoded city payload cannot discard another city's results. Its fallback does not start after the lookup budget is exhausted.
-- Generate standalone provider scripts from one shared template plus the Miner client fragment, and check consistency automatically. Distributed scripts still need no runtime imports, Node APIs, DOM, or eval.
+## Why only one or two providers returned results
 
-External HLS audio/subtitle groups retain their parent Auto master. Signed query parameters, relative playlist paths, subtitle headers, and explicit HLS types (including HLS served at `.json` URLs) remain supported. Confirmed HTML/JSON errors and HTTP 404/410 are excluded; device/region-dependent probe failures retain API-provided URLs.
+1. FrameXTV's API explicitly reports Headhunter, Valkyrie, Hog Rider, and Lava Hound as **provider disabled by configuration**. Miner's API backend is disabled too; its public client lookup is the usable path when the current origin and cities are used.
+2. The old plugin catalog did not include seven API providers that currently supply streams.
+3. Super Barbarian returned no Cinejoy streams for Inception. For other selections it supplied a playlist that returned an HTML **Site Unavailable** page, which the plugin correctly rejected.
+4. Some newer sources remain title-dependent or intermittent: recorded errors include an open failure circuit, a server-side decoding HTTP 500, no sources, upstream validation failure, and rate limiting. Adding a provider does not guarantee results for every title.
 
-## Automated checks
+## Live lookup results
+
+Each TV selection used season 1, episode 1. Counts are returned stream options after plugin normalization, HLS expansion, and filtering, not full-playback guarantees. All four final lookups used the updated 14-provider catalog.
+
+| Provider | Inception (27205) | Interstellar (157336) | Breaking Bad (1396) | Wednesday (119051) |
+| --- | --- | --- | --- | --- |
+| Super Barbarian | 0 | 0 | 0 | 0 |
+| Miner | 11 | 11 | 10 | 11 |
+| Headhunter | 0 | 0 | 0 | 0 |
+| Valkyrie | 0 | 0 | 0 | 0 |
+| Hog Rider | 0 | 0 | 0 | 0 |
+| Lava Hound | 0 | 0 | 0 | 0 |
+| Bowler | 7 | 7 | 8 | 6 |
+| Royal Champion | 9 | 0 | 0 | 0 |
+| Skeleton King | 0 | 0 | 3 | 0 |
+| Titan | 1 | 1 | 1 | 1 |
+| Giant | 1 | 0 | 1 | 1 |
+| Executioner | 13 | 16 | 14 | 15 |
+| Root Rider | 3 | 3 | 3 | 3 |
+| Archer Queen | 0 | 24 | 0 | 0 |
+| **Total options** | 45 | 62 | 40 | 37 |
+| **Providers with results** | 7 | 6 | 7 | 6 |
+
+Some playlist probes timed out; player-provided URLs are retained for failures that may depend on region or device. Full native playback, seeking, and every audio/subtitle/quality option were not tested. The earlier v1.1.3 sample check downloaded a Bowler segment containing H.264 video and AAC audio, plus a WebVTT subtitle; that is not a playback test for the newly added providers.
+
+## Website comparison
+
+The public homepage redirected from `framextv.tech` to `framextv.cc`. The website opened in the live browser, but its script then logged **You don't have permission to use DEVTOOL** and redirected the tab to `about:blank`, including after a recovery attempt. No safeguard was disabled or bypassed. Consequently the website player's end-to-end behavior could not be compared in that browser.
+
+The public website JavaScript retrieved before that restriction shows browser-side handlers for some sources, including Miner. Its current Miner origin and city list informed the protocol update. The plugin's API diagnostics separately recorded provider failure reasons and active alternate IDs. A website-side provider label does not imply that the same provider is enabled on the backend API.
+
+## Checks and reproducibility
 
 ```sh
 npm ci
 npm test
+npm run test:live
 ```
 
-**212 checks pass:** 91 existing provider regression checks, 15 Miner protocol/fallback checks, 92 optimization/reliability checks, and 14 ES5/QuickJS runtime checks. The Miner fixtures include a successful seed response at 19 seconds and execution without BigInt or Math.imul. Runtime checks use a limited URL shim and no Node APIs or timers; they do not reproduce every native Nuvio binding.
+**424 checks pass:** 182 provider regression checks, 17 Miner protocol/fallback checks, 197 optimization/label checks, and 28 ES5/QuickJS checks. Checks cover exact API provider selections, resolution-only labels, language/HDR stripping, adaptive range labels, captions/headers, independent city failures, secondary-city fallback, and avoiding secondary requests when primary cities work.
 
-A controlled fixture with **20 sources and 67 common captions** reduced common-subtitle normalization passes from **20 to 1**, with identical playback URLs, qualities, headers, and captions compared with v1.1.2. This measures redundant work, not a universal speedup or download-size reduction.
+The shared-caption fixture still normalizes 67 common captions once for 20 sources. Standalone provider consistency is checked by the generator. All runtime scripts remain ES5-compatible without DOM, Node APIs, eval, BigInt, or Math.imul requirements. Limited-binding engine tests do not reproduce every native Nuvio binding.
 
-## Live checks
+`LIVE_ID`, `LIVE_TYPE`, `LIVE_SEASON`, `LIVE_EPISODE`, and `LIVE_PROVIDER` select live test inputs. Normal diagnostic output records API source counts and failure reasons while omitting full playback URLs and request query strings. Temporary payloads, signed links, and live media are not published as repository fixtures.
 
-Use `npm run test:live` for an optional live lookup. Environment variables `LIVE_ID`, `LIVE_TYPE`, `LIVE_SEASON`, `LIVE_EPISODE`, and `LIVE_PROVIDER` select a title/provider. The default is movie TMDB **969681** (Spider-Man: Brand New Day). Normal output omits full playback URLs and request query strings.
-
-| Selection | Super Barbarian | Miner | Headhunter | Valkyrie | Hog Rider | Lava Hound | Bowler |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Spider-Man: Brand New Day, movie 969681 | 0 | 0 | 0 | 0 | 0 | 0 | 8 |
-| Jailer, movie 937020 | 0 | 0 | 0 | 0 | 0 | 0 | 7 |
-| Game of Thrones, TV 1399, S1 E1 | Not run | Not run | Not run | Not run | Not run | Not run | 4 |
-
-Miner's public seed endpoint returned HTTP 403 from this environment for both movies, and its fallback produced no streams. The Super Barbarian API explicitly reported no working Cinejoy streams for movie 969681. The other empty provider results were returned through their API lookups; fixtures verify that successful responses still resolve, but live availability for those providers was not established.
-
-A Bowler 480p playlist and one segment downloaded successfully. The segment had a PNG prefix; explicitly probing it as MPEG-TS found **H.264 video and AAC audio**. One supplied subtitle downloaded as WebVTT. This is not proof of automatic native-player format detection or successful playback of every option.
-
-Native phone/TV playback, seeking, full movies/episodes, and every language/quality combination were not tested. Temporary live responses and signed URLs are kept out of repository fixtures. Upstream availability and player compatibility can change independently of the plugin.
+Refresh the repository in Nuvio, enable the new providers you want, and reload the title's sources. Unavailable legacy providers remain optional settings rather than being removed or silently mapped to a different source.

@@ -1,5 +1,5 @@
   var MOVY = 'https://api.wecollege.net';
-  var MOVY_HEADERS = { Origin: 'https://www.movy.bz', Referer: 'https://www.movy.bz/' };
+  var MOVY_HEADERS = { Origin: 'https://www.movy.sx', Referer: 'https://www.movy.sx/' };
 
   // The website's public Miner client decodes encrypted JSON source responses.
   // Use 32-bit arithmetic so the same code works without BigInt or Math.imul.
@@ -52,15 +52,18 @@
     return JSON.parse(decodeURIComponent(escaped));
   }
   function minerPayload(id, type, season, episode) {
+    var started = Date.now();
     return fetchWithin(MOVY + '/seed?mediaId=' + encodeURIComponent(id), { headers: MOVY_HEADERS }, 20000, function (response) {
       if (!response.ok) throw new Error('Miner seed HTTP ' + response.status);
       return response.json();
     }).then(function (data) {
       if (!data || typeof data.seed !== 'string' || !data.seed) throw new Error('Miner seed unavailable');
-      return Promise.all(['miami', 'atlanta', 'dallas'].map(function (city) {
+      function cities(names) { return Promise.all(names.map(function (city) {
+        var remaining = 44000 - (Date.now() - started);
+        if (remaining <= 0) return Promise.resolve(null);
         var url = MOVY + '/' + city + '/sources?mediaType=' + type + '&tmdbId=' + encodeURIComponent(id) + '&enc=2&seed=' + encodeURIComponent(data.seed);
         if (type === 'tv') url += '&seasonId=' + season + '&episodeId=' + episode;
-        return fetchWithin(url, { headers: MOVY_HEADERS }, 12000, function (response) {
+        return fetchWithin(url, { headers: MOVY_HEADERS }, Math.min(12000, remaining), function (response) {
           if (!response.ok) throw new Error('Miner ' + city + ' HTTP ' + response.status);
           return response.text();
         }).then(function (body) {
@@ -68,7 +71,13 @@
           if (!decoded || !Array.isArray(decoded.sources)) throw new Error('Invalid Miner source payload');
           return { city: city, data: decoded };
         }).catch(function (error) { console.log('[FrameXTV Miner] ' + error.message); return null; });
-      }));
+      })); }
+      return cities(['miami', 'boise', 'atlanta']).then(function (groups) {
+        if (groups.some(function (group) { return group && group.data.sources.some(function (source) {
+          return source && httpUrl(source.url) && !/^(?:iframe|embed)$/i.test(source.type || '');
+        }); })) return groups;
+        return cities(['seattle', 'phoenix', 'oakland', 'vegas', 'portland', 'dallas']);
+      });
     }).then(function (groups) {
       var payload = { success: true, provider: 'miner', sources: [], subtitles: [] };
       groups.forEach(function (group) {

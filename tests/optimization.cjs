@@ -18,8 +18,8 @@ const source=(extras={})=>({url:'https://cdn.example/master.m3u8',type:'hls',qua
   let fetches=0;const p=load(code,()=>{fetches++;return Promise.resolve(response(playlist));});
   const normalized=p.normalize({sources:[source({audioTracks:[{label:'English'}]}),source({audioTracks:[{label:'Hindi'}]})],subtitles:[track()]});
   const ctx={},groups=await Promise.all(normalized.map(s=>p.expandQualities(s,ctx)));
-  check(prefix+'shared playlist fetched and parsed once without losing audio versions',()=>{assert.equal(normalized.length,2);assert.equal(fetches,1);assert.equal(p.metrics.masterParses,1);assert(groups[0][0].title.includes('English'));assert(groups[1][0].title.includes('Hindi'));});
-  check(prefix+'labels omit FrameXTV and duplicate quality text',()=>{for(const g of groups)for(const s of g){assert(!/framextv/i.test(s.name+' '+s.title));assert(!s.title.includes('Auto | Auto'));assert(!s.title.includes('API source'));}assert.equal(groups[0][1].title,'Fixture | 1080p | English | 4.0 Mbps');});
+  check(prefix+'shared playlist fetched and parsed once without losing audio versions',()=>{assert.equal(normalized.length,2);assert.equal(fetches,1);assert.equal(p.metrics.masterParses,1);assert.equal(groups[0][0]._audio,'English');assert.equal(groups[1][0]._audio,'Hindi');});
+  check(prefix+'result labels contain only resolution',()=>{for(const g of groups)for(const s of g){assert.equal(s.name,s.quality);assert.equal(s.title,s.quality);assert(/^(Auto|Unknown|4K|[1-9]\d{2,3}p)$/.test(s.quality));}assert.equal(groups[0][1].title,'1080p');});
   check(prefix+'shared captions normalized once with labels and headers intact',()=>{assert.equal(p.metrics.subtitlePasses,1);assert.equal(normalized[0].subtitles,normalized[1].subtitles);assert.equal(normalized[0].subtitles[0].name,'English');});
   const captions=p.normalize({subtitles:[track()],sources:[source({subtitles:[track('hi')]})]})[0].subtitles;
   check(prefix+'shared and source captions retain separate languages',()=>{assert.deepEqual(Array.from(captions,t=>t.language),['en','hi']);assert.equal(captions[0].name,'English');});
@@ -29,6 +29,7 @@ const source=(extras={})=>({url:'https://cdn.example/master.m3u8',type:'hls',qua
   check(prefix+'different headers probe separately; caption-only variants reuse a probe',()=>assert.equal(fetches,3));
   fetches=0;await p.expandQualities(normalized[0],{});await p.expandQualities(normalized[0],{});
   check(prefix+'new lookups fetch fresh playlists',()=>assert.equal(fetches,2));
+  check(prefix+'quality labels remove language and HDR without claiming a fixed adaptive resolution',()=>{const q=['4K / 1080p','1080p / Auto','1080p HDR','720p | Hindi','4k','dcloud'];assert.deepEqual(Array.from(p.normalize({sources:q.map((quality,i)=>source({url:'https://cdn.example/'+i+'.mp4',quality}))}),s=>s.quality),['Auto','Auto','1080p','720p','4K','Unknown']);});
   check(prefix+'case-insensitive embedded players are rejected',()=>assert.equal(p.normalize({sources:[source({type:'IFRAME'}),source({type:'Embed'})]}).length,0));
   check(prefix+'same caption URL with different headers remains available',()=>assert.equal(p.subtitles([track('en',{Referer:'a'}),track('en',{Referer:'b'})]).length,2));
   let splitCalls=0;const media={split(){splitCalls++;throw Error('Unexpected media scan');},toString(){return '#EXTM3U\n#EXTINF:10,\nsegment.ts';},indexOf(){return -1;}};
@@ -41,7 +42,7 @@ const source=(extras={})=>({url:'https://cdn.example/master.m3u8',type:'hls',qua
   check(prefix+'stalled API or Miner response returns without hanging',()=>assert.equal(empty.length,0));
   let calls=[];const full=load(code,u=>{calls.push(u);if(u.includes('api.wecollege.net'))return Promise.resolve(response({},503));return Promise.resolve(response({success:true,sources:[source({url:'https://cdn.example/video.mp4',type:'mp4',quality:'1080p'})]}));});
   const output=await full.getStreams('  TMDB:969681  ','movie');
-  check(prefix+'full output uses clean source labels and no private metadata',()=>{assert.equal(output.length,1);assert(!/framextv/i.test(output[0].name+' '+output[0].title));assert(!Object.keys(output[0]).some(k=>k.startsWith('_')));assert(calls.some(u=>u.includes('id=969681')));});
+  check(prefix+'full output uses clean source labels and no private metadata',()=>{assert.equal(output.length,1);assert.equal(output[0].name,'1080p');assert.equal(output[0].title,'1080p');assert(!Object.keys(output[0]).some(k=>k.startsWith('_')));assert(calls.some(u=>u.includes('id=969681')));});
  }
  // Representative common-caption workload, not a universal latency claim.
  const code=fs.readFileSync(path.join(__dirname,'../providers/framextv.js'),'utf8');

@@ -14,7 +14,7 @@ const manifest=require('../manifest.json');
    let r=context.evalCode(prelude+code);if(r.error)throw Error(context.dump(r.error));r.value.dispose();
    r=context.evalCode('JSON.stringify({loaded:typeof module.exports.getStreams, stream:module.exports.normalize({sources:[{url:"https://cdn.example/video.mp4",quality:"1080p",type:"mp4"}]})[0], url:module.exports.resolveUrl("../video.m3u8?sig=a%2Fb","https://cdn.example/path/master.m3u8"), master:module.exports.parseMaster("#EXTM3U\\n#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=1920x800\\nvideo.m3u8","https://cdn.example/master.m3u8")})');
    if(r.error)throw Error(context.dump(r.error));const value=JSON.parse(context.dump(r.value));r.value.dispose();
-   assert.equal(value.loaded,'function');assert(!/framextv/i.test(value.stream.name+' '+value.stream.title));assert.equal(value.url,'https://cdn.example/video.m3u8?sig=a%2Fb');assert.equal(value.master.variants[0].quality,'1080p');
+   assert.equal(value.loaded,'function');assert.equal(value.stream.name,'1080p');assert.equal(value.stream.title,'1080p');assert.equal(value.url,'https://cdn.example/video.m3u8?sig=a%2Fb');assert.equal(value.master.variants[0].quality,'1080p');
    console.log('PASS '+scraper.id+' QuickJS parsing with limited URL and no timers/Node');checks++;
   }finally{context.dispose();}
  }

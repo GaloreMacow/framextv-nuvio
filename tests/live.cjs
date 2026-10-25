@@ -9,7 +9,9 @@ function fetchCurl(url,options={},provider){return new Promise((resolve,reject)=
   const record={provider,host:new URL(url).hostname,path:new URL(url).pathname};
   if(error){requests.push({...record,error:error.code===28?'timeout':'network'});return reject(Error('Network request failed'));}
   const lines=output.split('\n'),final=lines.pop(),status=Number(lines.pop()),body=lines.join('\n');
-  requests.push({...record,status,bytes:body.length});
+  const detail={...record,status,bytes:body.length};
+  if(new URL(url).pathname==='/api/stream'){try{const data=JSON.parse(body);detail.success=data.success;detail.sourceCount=Array.isArray(data.sources)?data.sources.length:0;detail.code=data.code;detail.reason=String(data.error||'').replace(/https?:\/\/\S+/g,'[URL]');detail.alternates=data.alternates;}catch{detail.invalidJSON=true;}}
+  requests.push(detail);
   resolve({ok:status>=200&&status<300,status,url:final,text:()=>Promise.resolve(body),json:()=>Promise.resolve().then(()=>JSON.parse(body))});
  });
 });}
@@ -19,7 +21,7 @@ function fetchCurl(url,options={},provider){return new Promise((resolve,reject)=
   const start=Date.now(),logs=[],box={module:{exports:{}},URL,setTimeout,clearTimeout,console:{log:x=>logs.push(String(x))},fetch:(u,o)=>fetchCurl(u,o,scraper.id)};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'..',scraper.filename),'utf8'),box);
   const streams=await box.module.exports.getStreams(id,type,Number(process.env.LIVE_SEASON||1),Number(process.env.LIVE_EPISODE||1));
-  if(streams.some(s=>/FrameXTV/i.test(s.name+' '+s.title)))throw Error('Redundant result label');
+  if(streams.some(s=>s.name!==s.quality||s.title!==s.quality||!/^(Auto|Unknown|4K|[1-9]\d{2,3}p)$/.test(s.quality)))throw Error('Result label must contain only resolution');
   if(process.env.LIVE_OUTPUT_DIR){fs.mkdirSync(process.env.LIVE_OUTPUT_DIR,{recursive:true});fs.writeFileSync(path.join(process.env.LIVE_OUTPUT_DIR,scraper.id+'.json'),JSON.stringify(streams));}
   return {provider:scraper.id,seconds:Math.round((Date.now()-start)/1000),count:streams.length,streams:streams.map(s=>({name:s.name,title:s.title,quality:s.quality,host:new URL(s.url).hostname,subtitles:s.subtitles.length})),logs};
  }));
