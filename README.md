@@ -6,7 +6,8 @@ An unofficial plugin that brings FrameXTV movie and TV episode streams to Nuvio.
 
 - Seven providers: Super Barbarian, Miner, Headhunter, Valkyrie, Hog Rider, Lava Hound, and Bowler.
 - Available quality options, including adaptive Auto streams.
-- Subtitles when supplied by the source.
+- Audio labels and subtitles when supplied by the source.
+- Clean stream labels showing the source and quality.
 - Choose which providers to enable in Nuvio.
 
 ## Installation
@@ -22,3 +23,7 @@ An unofficial plugin that brings FrameXTV movie and TV episode streams to Nuvio.
 4. Open a movie or TV episode and select a FrameXTV stream.
 
 After updates, refresh the repository and reload the title’s sources. Stream availability, quality, and subtitles depend on FrameXTV and its providers.
+
+## Development
+
+Run `npm ci` and `npm test`. Edit shared logic in `providers/framextv.js` or Miner’s client in `scripts/miner-client.js`, then run `npm run build` to update all standalone providers. `npm run test:live` makes an optional live movie lookup; availability depends on upstream sources.
